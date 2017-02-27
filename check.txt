@@ -10,3 +10,19 @@
    -ms-user-select: none;
    user-select: none;
 }
+
+
+window.addEventListener("dragover",function(e){
+  e = e || event;
+  console.log(e);
+  if (e.target.tagName != "INPUT") { // check wich element is our target
+    e.preventDefault();
+  }
+},false);
+window.addEventListener("drop",function(e){
+  e = e || event;
+  console.log(e);
+  if (e.target.tagName != "INPUT") {  // check wich element is our target
+    e.preventDefault();
+  }  
+},false);
