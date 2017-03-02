@@ -26,3 +26,11 @@ window.addEventListener("drop",function(e){
     e.preventDefault();
   }  
 },false);
+
+
+SELECT
+    trimmed || CASE WHEN LOCATE('.',trimmed) = LENGTH(trimmed) THEN '0' ELSE '' END
+FROM (
+    SELECT TRIM(TRAILING '0' FROM field4) AS trimmed
+    FROM lablel
+) A
