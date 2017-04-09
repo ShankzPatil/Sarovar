@@ -172,6 +172,12 @@ css
                 /* End Web Client call */
                 
                 
+                string UserName = "GWMPLEKYC";
+                string Password = "GwmplEkyc";
+                string SenderID = "GWEKYC";
+                string API ="http://gwcsms.co.in/sendsms?uname=GWMPLEKYC&pwd=GwmplEkyc&senderid=GWEKYC&to=7304005860&msg=Hello AMit&route=T";
+                
+                
 /* The Overlay (background) */
 .overlay {
     /* Height & width depends on how you want to reveal the overlay (see JS below) */    
