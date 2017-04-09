@@ -158,25 +158,6 @@ FROM (
 
 
 css
-
-
-                string l_smsURL = string.Format("http://enterprise.smsgupshup.com/GatewayAPI/rest?userid={0}#password={1}#send_to=91{2}#msg={3}", "2000152624", "Skung@999", "7304005860", "Hello");
-                l_smsURL = l_smsURL.Replace("#", "&");
-                /* Web Client call */
-                WebClient objClient = new WebClient();
-                objClient.Headers.Add("Content-Type", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-                objClient.Proxy = WebProxy.GetDefaultProxy();
-                objClient.Credentials = System.Net.CredentialCache.DefaultCredentials;
-                objClient.Proxy.Credentials = System.Net.CredentialCache.DefaultCredentials;
-                l_sResponse = objClient.DownloadString(l_smsURL);
-                /* End Web Client call */
-                
-                
-                string UserName = "GWMPLEKYC";
-                string Password = "GwmplEkyc";
-                string SenderID = "GWEKYC";
-                string API ="http://gwcsms.co.in/sendsms?uname=GWMPLEKYC&pwd=GwmplEkyc&senderid=GWEKYC&to=7304005860&msg=Hello AMit&route=T";
-                
                 
 /* The Overlay (background) */
 .overlay {
