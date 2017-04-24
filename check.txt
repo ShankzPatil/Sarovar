@@ -242,3 +242,8 @@ private bool CheckDbConnection(string connectionString)
         return false; // any error is considered as db connection error for now
     }
 }
+
+foreach (var address in addresses.Split(new [] {";"}, StringSplitOptions.RemoveEmptyEntries))
+{
+    mailMessage.To.Add(address);    
+}
