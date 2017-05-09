@@ -1,0 +1,495 @@
+
+controller:: 
+
+//inject angular file upload directives and services.
+var app = angular.module('fileUpload', ['ngFileUpload']);
+
+app.controller('MyCtrl', ['$scope', 'Upload', function ($scope, Upload) {
+    $scope.$watch('files', function () {
+        $scope.upload($scope.files);
+    });
+
+    $scope.upload = function (files) {
+        if (files && files.length) {
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                Upload.upload({
+                    url: 'v1/publishFiles', //Route configured in backend
+                    fields: {'username': $scope.username},
+                    file: file,
+                    sendFieldsAs: 'form'
+                }).progress(function (evt) {
+                    var progressPercentage = parseInt(100.0 * evt.loaded / evt.total);
+                    console.log('progress: ' + progressPercentage + '% ' + evt.config.file.name);
+                }).success(function (data, status, headers, config) {
+                    console.log('file ' + config.file.name + 'uploaded. Response: ' + data);
+                }).error(function (data, status, headers, config) {
+                    console.log('error status: ' + status);
+                })
+            }
+        }
+    };
+}]);
+
+
+HTML:
+
+     <div
+           ngf-drop
+           ngf-select
+           ng-model="files"
+           class="dropBox"
+           ngf-drag-over-class="dragOver"
+           ngf-multiple="true"
+           ngf-allow-dir="true"
+           accept=".jpg">
+          <span class="dropFilesText">Drop files or folders to publish</span> <br>
+          <span class="dropFilesText">Click to select files to publish</span>
+      </div>
+    <div ngf-no-file-drop>File Drag/Drop is not supported for this browser</div>
+    
+    
+    o make the code from the API work in similar manner, we will have to add some settings to our Web.config under <system.serviceModel>. First, we will enable asp.net compatibility.
+
+ 
+    <serviceHostingEnvironment aspNetCompatibilityEnabled="true" multipleSiteBindingsEnabled="true" />
+1
+    <serviceHostingEnvironment aspNetCompatibilityEnabled="true" multipleSiteBindingsEnabled="true" />
+then to be able to use the HTTPContext, we need to add the following line to the appsettings
+
+ 
+<add key="wcf:serviceHostingEnvironment:useClassicReadEntityBodyMode" value="true" />
+1
+<add key="wcf:serviceHostingEnvironment:useClassicReadEntityBodyMode" value="true" />
+Now, lets create our Interface:
+
+ 
+using System.ServiceModel;
+using System.ServiceModel.Web;
+
+namespace Interfaces
+{
+    [ServiceContract]
+    public interface IPublishFilesService
+    {
+        [OperationContract]
+        [WebInvoke(
+            UriTemplate = "/v1/PublishFiles",
+            RequestFormat = WebMessageFormat.Json,
+            ResponseFormat = WebMessageFormat.Json,
+            Method = "POST")]
+        ResponseMessage PostOutbounFiles();
+    }
+}
+
+using System.ServiceModel;
+using System.ServiceModel.Web;
+ 
+namespace Interfaces
+{
+    [ServiceContract]
+    public interface IPublishFilesService
+    {
+        [OperationContract]
+        [WebInvoke(
+            UriTemplate = "/v1/PublishFiles",
+            RequestFormat = WebMessageFormat.Json,
+            ResponseFormat = WebMessageFormat.Json,
+            Method = "POST")]
+        ResponseMessage PostOutbounFiles();
+    }
+}
+Which should be self explaining. And the implementation:
+
+ 
+using System.Globalization;
+using System.ServiceModel.Activation;
+using System.Web;
+
+namespace Services
+{
+    [AspNetCompatibilityRequirements(RequirementsMode = AspNetCompatibilityRequirementsMode.Allowed)]
+    public class PublishFilesService : IPublishFilesService
+    {
+        public ResponseMessage PostOutbounFiles()
+        {
+            var responseMessage = new ResponseMessage();
+
+            var httpContext = HttpContext.Current;
+            var httpResponse = httpContext.Response;
+            var httpRequest = httpContext.Request;
+
+            var files = httpRequest.Files;
+
+            if (files.Count > 0)
+            {
+                var username = httpRequest.Form["username"];
+
+                for (int i = 0; i < files.Count; i++)
+                {
+                    var file = files[i];
+
+                    var path = string.Format(CultureInfo.InvariantCulture, "C:/inetpub/droplocation/ft/{0}/", username);
+                    var fname = path + file.FileName;
+
+                    this.CreateDirectoryIfNotExistent(path);
+
+                    file.SaveAs(fname);
+
+                    responseMessage.AddMessage(string.Format(CultureInfo.InvariantCulture, "File: {0} uploaded successfully!", file.FileName));
+                }
+            }
+            else
+            {
+                responseMessage.AddMessage("No file uploaded.");
+            }
+
+            return responseMessage;
+        }
+
+        private void CreateDirectoryIfNotExistent(string path)
+        {
+            if (!System.IO.Directory.Exists(path))
+            {
+                System.IO.Directory.CreateDirectory(path);
+            }
+        }
+    }
+}
+
+using System.Globalization;
+using System.ServiceModel.Activation;
+using System.Web;
+ 
+namespace Services
+{
+    [AspNetCompatibilityRequirements(RequirementsMode = AspNetCompatibilityRequirementsMode.Allowed)]
+    public class PublishFilesService : IPublishFilesService
+    {
+        public ResponseMessage PostOutbounFiles()
+        {
+            var responseMessage = new ResponseMessage();
+ 
+            var httpContext = HttpContext.Current;
+            var httpResponse = httpContext.Response;
+            var httpRequest = httpContext.Request;
+ 
+            var files = httpRequest.Files;
+ 
+            if (files.Count > 0)
+            {
+                var username = httpRequest.Form["username"];
+ 
+                for (int i = 0; i < files.Count; i++)
+                {
+                    var file = files[i];
+ 
+                    var path = string.Format(CultureInfo.InvariantCulture, "C:/inetpub/droplocation/ft/{0}/", username);
+                    var fname = path + file.FileName;
+ 
+                    this.CreateDirectoryIfNotExistent(path);
+ 
+                    file.SaveAs(fname);
+ 
+                    responseMessage.AddMessage(string.Format(CultureInfo.InvariantCulture, "File: {0} uploaded successfully!", file.FileName));
+                }
+            }
+            else
+            {
+                responseMessage.AddMessage("No file uploaded.");
+            }
+ 
+            return responseMessage;
+        }
+ 
+        private void CreateDirectoryIfNotExistent(string path)
+        {
+            if (!System.IO.Directory.Exists(path))
+            {
+                System.IO.Directory.CreateDirectory(path);
+            }
+        }
+    }
+}
+On this class, we had to add the attribute for the asp.net compatibility. Actually you will need to add that to all classes I think. The rest is pretty similar code than in our API.
+
+Now, lets add our service to the web.config file:
+
+ 
+<service
+        behaviorConfiguration="default"
+        name="Services.PublishFilesService">
+        <endpoint
+          address=""
+          behaviorConfiguration="webBehavior"
+          binding="webHttpBinding"
+          contract="Interfaces.IPublishFilesService" />
+      </service>
+
+<service
+        behaviorConfiguration="default"
+        name="Services.PublishFilesService">
+        <endpoint
+          address=""
+          behaviorConfiguration="webBehavior"
+          binding="webHttpBinding"
+          contract="Interfaces.IPublishFilesService" />
+      </service>
+Be aware here, in WCF you have a different structure of files and folders. if the service lies under modules/services, then the rest url will be something like localhost/modules/services/PublishFilesService.svc/v1/PublishFiles. This you can change with rewriting the modules or using this url in your upload controller.
+
+So thats it.
+
+AH, I am returning an ResponseMessage class, this is created by me and can be also created or changed to something else.
+
+ 
+
+Additions
+
+Extending Filesize per request
+
+Default setting is to allow 4MB per Request, this is sometimes not enough. I think requests up to 4GB are supported. So, you will need to change or add the following to your Web.configs to extend that:
+
+This we will add under <system.web>
+
+ 
+<!-- 3GB Files / in kilobyte (3072*1024) -->
+<httpRuntime targetFramework="4.5" maxRequestLength="3145728"/>
+1
+2
+<!-- 3GB Files / in kilobyte (3072*1024) -->
+<httpRuntime targetFramework="4.5" maxRequestLength="3145728"/>
+and this under <system.webserver>
+
+ 
+<security>
+    <requestFiltering>
+      <!-- 3GB Files / in byte (3072*1024*1024) -->
+      <requestLimits maxAllowedContentLength="3221225472" />
+    </requestFiltering>
+  </security>
+1
+2
+3
+4
+5
+6
+<security>
+    <requestFiltering>
+      <!-- 3GB Files / in byte (3072*1024*1024) -->
+      <requestLimits maxAllowedContentLength="3221225472" />
+    </requestFiltering>
+  </security>
+Now, you should be able to upload 3GB per request. So if you are sending 10 files, all together can not exceed 3GB. If you are sending one by one, then each file can be up to 3GB
+
+My Upload Service
+
+To be flexible to use either upload of one file or an array of files, I created this service. I also validate the file names, because this was necessary in our project.
+
+ 
+'use strict';
+
+    var module = angular.module('core.fileUpload.service', []);
+
+    module.factory('FileUploadService', ['Upload', '$timeout', 'GenerateIdService', 'ValidateFileNameService',
+        function (Upload, $timeout, GenerateIdService, ValidateFileNameService) {
+            var log = '';
+            var getLog = function() {
+                return log
+            };
+
+            var writeLog = function(value) {
+                log = value + '\n' + log;
+            };
+
+            var uploadToServer = function (files, fields, uploadUrl, uploadAllFilesAsArray) {
+                log = '';
+                var uploadConfig = {};
+                var uniqueId = GenerateIdService.generateUniqueId();
+                fields.uniqueId = uniqueId;
+
+                if (files && files.length) {
+                    writeLog('UploadID: ' + uniqueId);
+                    if (uploadAllFilesAsArray) {
+                        var validFileNames = ValidateFileNameService.validateFileNames(files, fields.feeder);
+
+                        if (!validFileNames) {
+                            writeLog(ValidateFileNameService.getValidFileNames(fields.feeder));
+                            writeLog('Error! One Filename not Accepted. Accepted files are:');
+                        } else {
+                            uploadConfig = {
+                                url: uploadUrl,
+                                fields: fields,
+                                file: files, //single file or an array of files (array is for html5 only)
+                                sendFieldsAs: 'form'
+                            };
+                            fileUploader(uploadConfig);
+                        }
+                    } else {
+                        for (var i = 0; i < files.length; i++) {
+                            var file = files[i];
+                            var validFileName = ValidateFileNameService.validateFileName(file, fields.feeder);
+                            if (!validFileName) {
+                                writeLog(ValidateFileNameService.getValidFileNames(fields.feeder));
+                                writeLog('Error! Filename: ' + file.name + ' not Accepted. Accepted files are:');
+                            } else {
+                                uploadConfig = {
+                                    url: uploadUrl,
+                                    fields: fields,
+                                    file: file, //single file or an array of files (array is for html5 only)
+                                    sendFieldsAs: 'form'
+                                };
+                                fileUploader(uploadConfig);
+                            }
+                        }
+                    }
+                }
+            };
+
+            var fileUploader = function (uploadConfig) {
+                Upload.upload(uploadConfig).progress(function (evt) {
+                    for (var i = 0; i < evt.config.file.length; i++) {
+                        writeLog('Uploading...' + evt.config.file[i].name);
+                    }
+                }).success(function (data, status, headers, config) { // jshint ignore:line
+                    $timeout(function () {
+                       for (var i = 0; i < data.Messages.length; i++) {
+                            writeLog('Response message: ' + data.Messages[i]);
+                        }
+                    });
+                }).error(function (data, status, headers, config) { // jshint ignore:line
+                    for (var i = 0; i < config.file.length; i++) {
+                        writeLog('Error: file (' + config.file[i].name + ') could not be uploaded!');
+                    }
+                }); // jshint ignore:line
+            };
+
+            return {
+                uploadLog: getLog,
+                uploadFiles: uploadToServer,
+        };
+    }]);
+
+'use strict';
+ 
+    var module = angular.module('core.fileUpload.service', []);
+ 
+    module.factory('FileUploadService', ['Upload', '$timeout', 'GenerateIdService', 'ValidateFileNameService',
+        function (Upload, $timeout, GenerateIdService, ValidateFileNameService) {
+            var log = '';
+            var getLog = function() {
+                return log
+            };
+ 
+            var writeLog = function(value) {
+                log = value + '\n' + log;
+            };
+ 
+            var uploadToServer = function (files, fields, uploadUrl, uploadAllFilesAsArray) {
+                log = '';
+                var uploadConfig = {};
+                var uniqueId = GenerateIdService.generateUniqueId();
+                fields.uniqueId = uniqueId;
+ 
+                if (files && files.length) {
+                    writeLog('UploadID: ' + uniqueId);
+                    if (uploadAllFilesAsArray) {
+                        var validFileNames = ValidateFileNameService.validateFileNames(files, fields.feeder);
+ 
+                        if (!validFileNames) {
+                            writeLog(ValidateFileNameService.getValidFileNames(fields.feeder));
+                            writeLog('Error! One Filename not Accepted. Accepted files are:');
+                        } else {
+                            uploadConfig = {
+                                url: uploadUrl,
+                                fields: fields,
+                                file: files, //single file or an array of files (array is for html5 only)
+                                sendFieldsAs: 'form'
+                            };
+                            fileUploader(uploadConfig);
+                        }
+                    } else {
+                        for (var i = 0; i < files.length; i++) {
+                            var file = files[i];
+                            var validFileName = ValidateFileNameService.validateFileName(file, fields.feeder);
+                            if (!validFileName) {
+                                writeLog(ValidateFileNameService.getValidFileNames(fields.feeder));
+                                writeLog('Error! Filename: ' + file.name + ' not Accepted. Accepted files are:');
+                            } else {
+                                uploadConfig = {
+                                    url: uploadUrl,
+                                    fields: fields,
+                                    file: file, //single file or an array of files (array is for html5 only)
+                                    sendFieldsAs: 'form'
+                                };
+                                fileUploader(uploadConfig);
+                            }
+                        }
+                    }
+                }
+            };
+ 
+            var fileUploader = function (uploadConfig) {
+                Upload.upload(uploadConfig).progress(function (evt) {
+                    for (var i = 0; i < evt.config.file.length; i++) {
+                        writeLog('Uploading...' + evt.config.file[i].name);
+                    }
+                }).success(function (data, status, headers, config) { // jshint ignore:line
+                    $timeout(function () {
+                       for (var i = 0; i < data.Messages.length; i++) {
+                            writeLog('Response message: ' + data.Messages[i]);
+                        }
+                    });
+                }).error(function (data, status, headers, config) { // jshint ignore:line
+                    for (var i = 0; i < config.file.length; i++) {
+                        writeLog('Error: file (' + config.file[i].name + ') could not be uploaded!');
+                    }
+                }); // jshint ignore:line
+            };
+ 
+            return {
+                uploadLog: getLog,
+                uploadFiles: uploadToServer,
+        };
+    }]);
+Next, i am calling it like this from our controller:
+
+ 
+$scope.$watch('files', function () {
+    $scope.upload($scope.files);
+});
+ 
+$scope.$watch(function() {
+    return FileUploadService.uploadLog();
+}, function(newValue, oldValue, scope) {
+    $scope.uploadLog = newValue;
+   }
+);
+ 
+$scope.upload = function (files) {
+    var data = {
+        'feeder': 'ft'
+    };
+ 
+    var url = '/PublishFiles';
+ 
+    FileUploadService.uploadFiles(files, data, url, true);
+};
+
+$scope.$watch('files', function () {
+    $scope.upload($scope.files);
+});
+$scope.$watch(function() {
+    return FileUploadService.uploadLog();
+}, function(newValue, oldValue, scope) {
+    $scope.uploadLog = newValue;
+   }
+);
+$scope.upload = function (files) {
+    var data = {
+        'feeder': 'ft'
+    };
+    var url = '/PublishFiles';
+    FileUploadService.uploadFiles(files, data, url, true);
+};
+I am watching here also the uploadLog form the service to be able to write something to the user.
+
