@@ -1,0 +1,58 @@
+CREATE FUNCTION [dbo].[isValidEmailFormat]
+(
+    @EmailAddress varchar(500)
+)
+RETURNS bit
+AS
+BEGIN
+    DECLARE @Result bit
+
+    SET @EmailAddress = LTRIM(RTRIM(@EmailAddress));
+    SELECT @Result =
+    CASE WHEN
+    CHARINDEX(' ',LTRIM(RTRIM(@EmailAddress))) = 0
+    AND LEFT(LTRIM(@EmailAddress),1) <> '@'
+    AND RIGHT(RTRIM(@EmailAddress),1) <> '.'
+    AND LEFT(LTRIM(@EmailAddress),1) <> '-'
+    AND CHARINDEX('.',@EmailAddress,CHARINDEX('@',@EmailAddress)) - CHARINDEX('@',@EmailAddress) > 2    
+    AND LEN(LTRIM(RTRIM(@EmailAddress))) - LEN(REPLACE(LTRIM(RTRIM(@EmailAddress)),'@','')) = 1
+    AND CHARINDEX('.',REVERSE(LTRIM(RTRIM(@EmailAddress)))) >= 3
+    AND (CHARINDEX('.@',@EmailAddress) = 0 AND CHARINDEX('..',@EmailAddress) = 0)
+    AND (CHARINDEX('-@',@EmailAddress) = 0 AND CHARINDEX('..',@EmailAddress) = 0)
+    AND (CHARINDEX('_@',@EmailAddress) = 0 AND CHARINDEX('..',@EmailAddress) = 0)
+    AND ISNUMERIC(SUBSTRING(@EmailAddress, 1, 1)) = 0
+    AND CHARINDEX(',', @EmailAddress) = 0
+    AND CHARINDEX('!', @EmailAddress) = 0
+    AND CHARINDEX('-.', @EmailAddress)=0
+    AND CHARINDEX('%', @EmailAddress)=0
+    AND CHARINDEX('#', @EmailAddress)=0
+    AND CHARINDEX('$', @EmailAddress)=0
+    AND CHARINDEX('&', @EmailAddress)=0
+    AND CHARINDEX('^', @EmailAddress)=0
+    AND CHARINDEX('''', @EmailAddress)=0
+    AND CHARINDEX('\', @EmailAddress)=0
+    AND CHARINDEX('/', @EmailAddress)=0
+    AND CHARINDEX('*', @EmailAddress)=0
+    AND CHARINDEX('+', @EmailAddress)=0
+    AND CHARINDEX('(', @EmailAddress)=0
+    AND CHARINDEX(')', @EmailAddress)=0
+    AND CHARINDEX('[', @EmailAddress)=0
+    AND CHARINDEX(']', @EmailAddress)=0
+    AND CHARINDEX('{', @EmailAddress)=0
+    AND CHARINDEX('}', @EmailAddress)=0
+    AND CHARINDEX('?', @EmailAddress)=0
+    AND CHARINDEX('<', @EmailAddress)=0
+    AND CHARINDEX('>', @EmailAddress)=0
+    AND CHARINDEX('=', @EmailAddress)=0
+    AND CHARINDEX('~', @EmailAddress)=0
+    AND CHARINDEX('`', @EmailAddress)=0 
+    AND CHARINDEX('.', SUBSTRING(@EmailAddress, CHARINDEX('@', @EmailAddress)+1, 2))=0
+    AND CHARINDEX('.', SUBSTRING(@EmailAddress, CHARINDEX('@', @EmailAddress)-1, 2))=0
+    AND LEN(SUBSTRING(@EmailAddress, 0, CHARINDEX('@', @EmailAddress)))>1
+    AND CHARINDEX('.', REVERSE(@EmailAddress)) > 2
+    AND CHARINDEX('.', REVERSE(@EmailAddress)) < 5  
+    THEN 1 ELSE  0 END
+
+
+    RETURN @Result
+END
