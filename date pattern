@@ -7,3 +7,12 @@ $scope.pattern = new RegExp(PatternAsString);
 
 <input ng-model="foo" ng-pattern="pattern">
 
+
+
+using (MemoryStream ms = new MemoryStream()) {
+  using (PdfStamper stamper = new PdfStamper(reader, ms, '\0', true)) {
+// do stuff      
+  }    
+  return ms.ToArray();
+}
+
