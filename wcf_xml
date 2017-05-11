@@ -1,0 +1,223 @@
+Here you will see how to create a WCF REST based service. In this example we will define 2 methods GetSampleMethod (method type is GET) & PostSampleMethod (method type is POST).
+
+GET method will take an input as String & returns a formatted String
+POST method will take an input as XML (user registration) & return a status string
+Note: One should have basic knowledge on what is WCF, Why WCF & My article will discuss HOW to use WCF with webHttpBinding
+
+We will divide this article into the below sections
+
+Define the WCF Service
+Define Interface
+Define Class
+Implement POST & GET methods
+Define a Configuration for the WCF Service
+Service Configuration
+Behavior Configuration
+Smoke test WCF service (before Client uses it)
+Implement client code to use WCF Service
+Define the WCF Service
+
+Open VS 2010 & Select new Project, then select WCF & select WCF Service Application & name it as WCF Rest Based.
+Now add new Service Class to this application as "MyService.svc"
+Open interface IMservice.cs & add the below code
+perationContract: PostSampleMethod
+WebInvoke Method Type = POST as we are implementing POST
+URI Template define the url format by which this method is identified / linked. Note: MethodName, URI Template name & Operation Contract names may not be same means, they can be different
+PostSampleMethod will accept XML string as input in POST method. Using Stream as input parameter we can de-serialize input data before using it
+
+[OperationContract(Name = "PostSampleMethod")]
+[WebInvoke(Method = "POST",
+UriTemplate = "PostSampleMethod/New")]
+string PostSampleMethod(Stream data);
+
+OpetaionContract name : GetSampleMethod
+WebGet attribute defined method type is GET
+Need to include below name spaces
+ 
+    using System.ServiceModel.Web;
+    using System.ServiceModel
+    using System.Runtime.Serialization
+    using System.IO
+    [OperationContract(Name = "GetSampleMethod")]
+    [WebGet(UriTemplate = "GetSampleMethod/inputStr/{name}")]
+    string GetSampleMethod(string name);
+ 
+Open the MyService.cs class and provide implementation for the methods defined in IMyService Interface as shown below
+
+    publicstring PostSampleMethod(Stream data)
+    {
+    // convert Stream Data to StreamReader
+    StreamReader reader =new StreamReader(data);
+    
+    // Read StreamReader data as string
+    string xmlString = reader.ReadToEnd();
+    string returnValue = xmlString;
+    
+    // return the XMLString data
+    return returnValue;
+    }
+    public string GetSampleMethod(string strUserName)
+    {
+        StringBuilder strReturnValue = new StringBuilder();
+        // return username prefixed as shown below
+        strReturnValue.Append(string.Format("You have entered userName as {0}", strUserName));
+        return strReturnValue.ToString();
+    }
+Define Configuration for WCF Service
+
+Open web.config as we need to define configuration for our WCF Service. If you want our service to be accessed as part of webHttp then we need to defined webHttpBinding & mexHttpBinding.
+In System.ServiceModel defined configuration as shown below. 
+<services>
+      <servicename="WcfRestBased.MyService"
+         behaviorConfiguration="myServiceBehavior">
+        <endpointname="webHttpBinding"
+                  address=""
+                  binding="webHttpBinding"
+                  contract="WcfRestBased.IMyService"
+                  behaviorConfiguration="webHttp"
+                  >
+                </endpoint>
+        <endpointname="mexHttpBinding"
+                  address="mex"
+                  binding="mexHttpBinding"
+                  contract="IMetadataExchange"
+                  />
+      </service>
+ </services>
+Service Name: To find what to be given, then right click the service & select ViewMarkup option.eg in my case it is MyService.svc, look for Service attribute & use the complete string in my case it is Service="WcfRestBased.MyService"behaviorConfiguration: can be any name but this will be again used when we define behavior settings in my case it is myServiceBehavior
+
+Endpoint for webHttpBinding
+
+endpoint name: should be webHttpBinding if you are configuring for web access
+
+address: we can leave it empty
+
+binding: should be webHttpBinding
+
+contract: should be Namespace.Interfacename. In mycase it is wcfRestBased.IMyService
+
+behaviorConfiguration: should be webHttp
+
+EndPoint for mexHttpBinding
+
+These values should be same as shown above
+ 
+
+Now define the Service behavior as shown below in System.ServiceModel. "mySeriveBehavior" name should match to behaviorConfiguration name defined in Service tag ( shown above)
+ 
+<behaviors>
+      <serviceBehaviors>
+        <behavior name="myServiceBehavior" >
+          <serviceMetadata httpGetEnabled="true"/>
+          <serviceDebug includeExceptionDetailInFaults="false" />
+        </behavior>
+        <behavior>
+          <!â€“ To avoid disclosing metadata information, 
+                 set the value below to false and remove the metadata endpoint 
+                 above before deployment â€“>
+          <serviceMetadata httpGetEnabled="true"/>
+          <!â€“ To receive exception details in faults for debugging purposes, 
+                 set the value below to true. Set to false before deployment 
+                 to avoid disclosing exception information â€“>
+          <serviceDebug includeExceptionDetailInFaults="false"/>
+        </behavior>
+      </serviceBehaviors>
+      <endpointBehaviors>
+        <behavior name="webHttp">
+          <webHttp/>
+        </behavior>
+      </endpointBehaviors>
+</behaviors>
+Smoke test WCF service
+
+Configure WCF Service in IIS
+To check our WCF service is working properly lets test it by opening MyService.svc in browser in my case it is http://localhost/wcfrestbased/MyService.svc
+To test our GET method service, you can call it by http://localhost/wcfrestbased/MyService.svc/GetSampleMethod/inputStr/suryaprakash & this show up data as "<string>You have entered userName as suryaprakash</string>"
+By this we can confirm our service is working fine
+Implement client code to use the WCF Service
+
+Create a new website application which will act as client to access WCF services
+Add a textbox to default.aspx page & name it as txtResult & open Default.aspx.cs
+Define below function which will call rest service to fetch the data. This method will call POSTSAMPLEMETHOD in service (MyService) implemented. Inline code comments are added
+ 
+void CallPostMethod()
+   {
+        // Restful service URL
+        string url = 
+          "http://localhost/wcfrestbased/myservice.svc/PostSampleMethod/New";
+ 
+        / declare ascii encoding
+       ASCIIEncoding encoding = new ASCIIEncoding();
+        string strResult = string.Empty;
+        // sample xml sent to Service & this data is sent in POST
+        string SampleXml = @"<parent>" +
+               "<child>" +
+                  "<username>username</username>" +
+                    "<password>password</password>" +
+                   "</child>" +
+                "</parent>";
+        string postData = SampleXml.ToString();
+        // convert xmlstring to byte using ascii encoding
+        byte[] data = encoding.GetBytes(postData);
+        // declare httpwebrequet wrt url defined above
+        HttpWebRequest webrequest = (HttpWebRequest)WebRequest.Create(url);
+        // set method as post
+        webrequest.Method = "POST";
+        // set content type
+        webrequest.ContentType = "application/x-www-form-urlencoded";
+        // set content length
+        webrequest.ContentLength = data.Length;
+        // get stream data out of webrequest object
+        Stream newStream = webrequest.GetRequestStream();
+        newStream.Write(data, 0, data.Length);
+        newStream.Close();
+        // declare & read response from service
+        HttpWebResponse webresponse = (HttpWebResponse)webrequest.GetResponse();
+ 
+        // set utf8 encoding
+        Encoding enc = System.Text.Encoding.GetEncoding("utf-8?);
+        // read response stream from response object
+        StreamReader loResponseStream = 
+            new StreamReader(webresponse.GetResponseStream(), enc);
+        // read string from stream data
+        strResult = loResponseStream.ReadToEnd();
+        // close the stream object
+        loResponseStream.Close();
+        // close the response object
+         webresponse.Close();
+        // below steps remove unwanted data from response string
+        strResult = strResult.Replace("</string>", "");
+        
+Now lets go ahead and implement code to call GETSAMPLEMETHOD from client application. Below code has inline comments
+
+void CallGetMethod()
+    {
+        // Restful service URL
+        string url = "http://localhost/wcfrestbased/myservice.svc/
+                      GetSampleMethod/inputStr/suryaprakash";
+        string strResult = string.Empty;
+        // declare httpwebrequet wrt url defined above
+        HttpWebRequest webrequest = (HttpWebRequest)WebRequest.Create(url);
+        // set method as post
+        webrequest.Method = "GET";
+        // set content type
+        webrequest.ContentType = "application/x-www-form-urlencoded";
+        // declare & read response from service
+        HttpWebResponse webresponse = (HttpWebResponse)webrequest.GetResponse();
+        // set utf8 encoding
+        Encoding enc = System.Text.Encoding.GetEncoding("utf-8?);
+        // read response stream from response object
+        StreamReader loResponseStream = new StreamReader
+                              (webresponse.GetResponseStream(), enc);
+        // read string from stream data
+        strResult = loResponseStream.ReadToEnd();
+        // close the stream object
+        loResponseStream.Close();
+        // close the response object
+        webresponse.Close();
+        // assign the final result to text box
+        txtResult.Text = strResult;
+    }
+    
+Now go ahead and call above methods to see the output of each methods.
+Happy coding, Hope this helps!
