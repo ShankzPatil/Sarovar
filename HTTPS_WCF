@@ -1,4 +1,21 @@
 HTTPS WCF
+try
+            {
+                var configProc = new ProcessStartInfo();
+                string cmdConfig = @"netstat -o -n -a | find /c "0.0.0.0:8082";
+                configProc.UseShellExecute = true;
+
+                configProc.WorkingDirectory = @"C:\Windows\System32";
+                configProc.FileName = @"C:\Windows\System32\cmd.exe";
+                configProc.Verb = "runas";
+                configProc.Arguments = "/c " + cmdConfig;
+                configProc.WindowStyle = ProcessWindowStyle.Hidden;
+                Process.Start(configProc);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
 
 
 1>>> ANS
